@@ -1,7 +1,7 @@
 # -*- coding: utf8 -*-
 import math
 import traceback
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import pytz
 import uuid
 
@@ -29,14 +29,23 @@ def get_int_value_default(_config: dict, _key, default):
 
 # 获取当前时间对应的最大和最小步数
 def get_min_max_by_time(hour=None, minute=None):
-    if hour is None:
-        hour = time_bj.hour
-    if minute is None:
-        minute = time_bj.minute
+    # 如果未指定时间，自动获取当前北京时间 (UTC+8)
+    if hour is None or minute is None:
+        tz_bj = timezone(timedelta(hours=8))
+        time_bj = datetime.now(tz_bj)
+        if hour is None:
+            hour = time_bj.hour
+        if minute is None:
+            minute = time_bj.minute
+            
+    # 计算当前时间占 22 点的比例（最高为 1）
     time_rate = min((hour * 60 + minute) / (22 * 60), 1)
+    
     min_step = get_int_value_default(config, 'MIN_STEP', 18000)
     max_step = get_int_value_default(config, 'MAX_STEP', 25000)
-    return int(time_rate * min_step), int(time_rate * max_step)
+    
+    # 最小值固定为 min_step（每次都不低于 18000），最大值随时间推移逐步拉伸
+    return min_step, int(min_step + (max_step - min_step) * time_rate)
 
 
 # 虚拟ip地址
